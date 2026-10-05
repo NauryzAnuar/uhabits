@@ -1,25 +1,7 @@
-/*
- * Copyright (C) 2016-2025 Álinson Santos Xavier <git@axavier.org>
- *
- * This file is part of Loop Habit Tracker.
- *
- * Loop Habit Tracker is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
- *
- * Loop Habit Tracker is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
 package org.isoron.uhabits.activities.habits.list
 
 import android.content.Context
+import android.content.Intent
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -27,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import me.tatarka.inject.annotations.Inject
 import org.isoron.uhabits.R
+import org.isoron.uhabits.activities.plan.PlanActivity
 import org.isoron.uhabits.core.models.HabitList
 import org.isoron.uhabits.core.preferences.Preferences
 import org.isoron.uhabits.core.ui.ThemeSwitcher
@@ -43,81 +26,256 @@ class ListHabitsMenu(
     private val themeSwitcher: ThemeSwitcher,
     val behavior: ListHabitsMenuBehavior
 ) {
-    val activity = context as AppCompatActivity
-    private var menu: Menu? = null
-    private var isSearchActive = false
+    val activity =
+        context as AppCompatActivity
 
-    fun onCreate(inflater: MenuInflater, menu: Menu) {
+    private var menu:
+            Menu? = null
+
+    private var isSearchActive =
+        false
+
+    fun onCreate(
+        inflater: MenuInflater,
+        menu: Menu
+    ) {
         this.menu = menu
+
         menu.clear()
-        inflater.inflate(R.menu.list_habits, menu)
+
+        inflater.inflate(
+            R.menu.list_habits,
+            menu
+        )
+
+        createPlanButton(menu)
         createSearchBar(menu)
         createMenuItems(menu)
         updateArrows(menu)
     }
 
-    private fun createMenuItems(menu: Menu) {
-        val nightModeItem = menu.findItem(R.id.actionToggleNightMode)
-        val hideArchivedItem = menu.findItem(R.id.actionHideArchived)
-        val hideCompletedItem = menu.findItem(R.id.actionHideCompleted)
-        nightModeItem.isChecked = themeSwitcher.isNightMode
-        hideArchivedItem.isChecked = !preferences.showArchived
-        hideCompletedItem.isChecked = !preferences.showCompleted
-        if (preferences.areQuestionMarksEnabled || preferences.isSkipEnabled) {
-            hideCompletedItem.title = activity.resources.getString(R.string.hide_entered)
+    private fun createPlanButton(
+        menu: Menu
+    ) {
+        val planItem =
+            menu.add(
+                R.id.actionItems,
+                ACTION_PLAN,
+                1,
+                "План"
+            )
+
+        planItem.setIcon(
+            android.R.drawable.ic_menu_agenda
+        )
+
+        planItem.setShowAsAction(
+            MenuItem.SHOW_AS_ACTION_ALWAYS
+        )
+    }
+
+    private fun createMenuItems(
+        menu: Menu
+    ) {
+        val nightModeItem =
+            menu.findItem(
+                R.id.actionToggleNightMode
+            )
+
+        val hideArchivedItem =
+            menu.findItem(
+                R.id.actionHideArchived
+            )
+
+        val hideCompletedItem =
+            menu.findItem(
+                R.id.actionHideCompleted
+            )
+
+        nightModeItem.isChecked =
+            themeSwitcher.isNightMode
+
+        hideArchivedItem.isChecked =
+            !preferences.showArchived
+
+        hideCompletedItem.isChecked =
+            !preferences.showCompleted
+
+        if (
+            preferences.areQuestionMarksEnabled ||
+            preferences.isSkipEnabled
+        ) {
+            hideCompletedItem.title =
+                activity.resources.getString(
+                    R.string.hide_entered
+                )
         } else {
-            hideCompletedItem.title = activity.resources.getString(R.string.hide_completed)
+            hideCompletedItem.title =
+                activity.resources.getString(
+                    R.string.hide_completed
+                )
         }
     }
 
-    private fun createSearchBar(menu: Menu) {
-        val searchContainer = menu.findItem(R.id.actionSearchContainer)
-        searchContainer.isVisible = isSearchActive
-        menu.setGroupVisible(R.id.actionItems, !isSearchActive)
-        with(searchContainer.actionView as SearchView) {
-            queryHint = activity.getString(R.string.search)
+    private fun createSearchBar(
+        menu: Menu
+    ) {
+        val searchContainer =
+            menu.findItem(
+                R.id.actionSearchContainer
+            )
+
+        searchContainer.isVisible =
+            isSearchActive
+
+        menu.setGroupVisible(
+            R.id.actionItems,
+            !isSearchActive
+        )
+
+        with(
+            searchContainer.actionView
+                    as SearchView
+        ) {
+            queryHint =
+                activity.getString(
+                    R.string.search
+                )
+
             isIconified = false
-            setQuery(behavior.searchQuery, false)
-            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(query: String) = false
-                override fun onQueryTextChange(newText: String): Boolean {
-                    behavior.onSearchQueryChanged(newText)
-                    return true
+
+            setQuery(
+                behavior.searchQuery,
+                false
+            )
+
+            setOnQueryTextListener(
+                object :
+                    SearchView.OnQueryTextListener {
+
+                    override fun
+                            onQueryTextSubmit(
+                        query: String
+                    ) = false
+
+                    override fun
+                            onQueryTextChange(
+                        newText: String
+                    ): Boolean {
+
+                        behavior.onSearchQueryChanged(
+                            newText
+                        )
+
+                        return true
+                    }
                 }
-            })
+            )
+
             setOnCloseListener {
                 isSearchActive = false
-                menu.setGroupVisible(R.id.actionItems, true)
+
+                menu.setGroupVisible(
+                    R.id.actionItems,
+                    true
+                )
+
                 activity.invalidateOptionsMenu()
+
                 true
             }
         }
     }
 
-    private fun updateArrows(menu: Menu) {
-        val styledResources = StyledResources(activity)
-        val sortManual = menu.findItem(R.id.actionSortManual)
-        val sortName = menu.findItem(R.id.actionSortName)
-        val sortColor = menu.findItem(R.id.actionSortColor)
-        val sortScore = menu.findItem(R.id.actionSortScore)
-        val sortStatus = menu.findItem(R.id.actionSortStatus)
-        val arrowUp = styledResources.getDrawable(R.attr.iconArrowUp)
-        val arrowDown = styledResources.getDrawable(R.attr.iconArrowDown)
-        when (preferences.defaultPrimaryOrder) {
-            HabitList.Order.BY_NAME_ASC -> sortName.icon = arrowDown
-            HabitList.Order.BY_NAME_DESC -> sortName.icon = arrowUp
-            HabitList.Order.BY_COLOR_ASC -> sortColor.icon = arrowDown
-            HabitList.Order.BY_COLOR_DESC -> sortColor.icon = arrowUp
-            HabitList.Order.BY_SCORE_ASC -> sortScore.icon = arrowDown
-            HabitList.Order.BY_SCORE_DESC -> sortScore.icon = arrowUp
-            HabitList.Order.BY_STATUS_ASC -> sortStatus.icon = arrowDown
-            HabitList.Order.BY_STATUS_DESC -> sortStatus.icon = arrowUp
-            HabitList.Order.BY_POSITION -> sortManual.icon = arrowUp
+    private fun updateArrows(
+        menu: Menu
+    ) {
+        val styledResources =
+            StyledResources(activity)
+
+        val sortManual =
+            menu.findItem(
+                R.id.actionSortManual
+            )
+
+        val sortName =
+            menu.findItem(
+                R.id.actionSortName
+            )
+
+        val sortColor =
+            menu.findItem(
+                R.id.actionSortColor
+            )
+
+        val sortScore =
+            menu.findItem(
+                R.id.actionSortScore
+            )
+
+        val sortStatus =
+            menu.findItem(
+                R.id.actionSortStatus
+            )
+
+        val arrowUp =
+            styledResources.getDrawable(
+                R.attr.iconArrowUp
+            )
+
+        val arrowDown =
+            styledResources.getDrawable(
+                R.attr.iconArrowDown
+            )
+
+        when (
+            preferences.defaultPrimaryOrder
+        ) {
+            HabitList.Order.BY_NAME_ASC ->
+                sortName.icon = arrowDown
+
+            HabitList.Order.BY_NAME_DESC ->
+                sortName.icon = arrowUp
+
+            HabitList.Order.BY_COLOR_ASC ->
+                sortColor.icon = arrowDown
+
+            HabitList.Order.BY_COLOR_DESC ->
+                sortColor.icon = arrowUp
+
+            HabitList.Order.BY_SCORE_ASC ->
+                sortScore.icon = arrowDown
+
+            HabitList.Order.BY_SCORE_DESC ->
+                sortScore.icon = arrowUp
+
+            HabitList.Order.BY_STATUS_ASC ->
+                sortStatus.icon = arrowDown
+
+            HabitList.Order.BY_STATUS_DESC ->
+                sortStatus.icon = arrowUp
+
+            HabitList.Order.BY_POSITION ->
+                sortManual.icon = arrowUp
         }
     }
 
-    fun onItemSelected(item: MenuItem): Boolean {
+    fun onItemSelected(
+        item: MenuItem
+    ): Boolean {
         when (item.itemId) {
+
+            ACTION_PLAN -> {
+                activity.startActivity(
+                    Intent(
+                        activity,
+                        PlanActivity::class.java
+                    )
+                )
+
+                return true
+            }
+
             R.id.actionToggleNightMode -> {
                 behavior.onToggleNightMode()
                 return true
@@ -186,7 +344,13 @@ class ListHabitsMenu(
                 return true
             }
 
-            else -> return false
+            else ->
+                return false
         }
+    }
+
+    companion object {
+        private const val ACTION_PLAN =
+            9001
     }
 }

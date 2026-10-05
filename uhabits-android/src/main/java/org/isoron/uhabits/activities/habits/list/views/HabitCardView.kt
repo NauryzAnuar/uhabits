@@ -2,19 +2,6 @@
  * Copyright (C) 2016-2025 Álinson Santos Xavier <git@axavier.org>
  *
  * This file is part of Loop Habit Tracker.
- *
- * Loop Habit Tracker is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by the
- * Free Software Foundation, either version 3 of the License, or (at your
- * option) any later version.
- *
- * Loop Habit Tracker is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.isoron.uhabits.activities.habits.list.views
@@ -127,7 +114,25 @@ class HabitCardView(
     private var numberPanel: NumberPanelView
     private var innerFrame: LinearLayout
     private var label: TextView
+    private var metaLabel: TextView
+    private var labelColumn: LinearLayout
     private var scoreRing: RingView
+    private var sectionHeader: TextView
+    private var verticalFrame: LinearLayout
+
+    var sectionTitle: String? = null
+        set(value) {
+            field = value
+            sectionHeader.text = value.orEmpty()
+            sectionHeader.visibility = if (value.isNullOrBlank()) GONE else VISIBLE
+        }
+
+    var planningMeta: String = ""
+        set(value) {
+            field = value
+            metaLabel.text = value
+            metaLabel.visibility = if (value.isBlank()) GONE else VISIBLE
+        }
 
     private var currentToggleTaskId = 0
 
@@ -146,10 +151,34 @@ class HabitCardView(
         label = TextView(context).apply {
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
             if (SDK_INT >= Build.VERSION_CODES.Q) {
                 breakStrategy = BREAK_STRATEGY_BALANCED
             }
+        }
+
+        metaLabel = TextView(context).apply {
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            textSize = 11.5f
+            alpha = 0.62f
+            visibility = GONE
+            setPadding(0, dp(1f).toInt(), 0, 0)
+        }
+
+        sectionHeader = TextView(context).apply {
+            textSize = 17f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextColor(sres.getColor(R.attr.contrast100))
+            visibility = GONE
+            setPadding(dp(8f).toInt(), dp(14f).toInt(), dp(8f).toInt(), dp(6f).toInt())
+        }
+
+        labelColumn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+            addView(label, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(metaLabel, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
         }
 
         checkmarkPanel = checkmarkPanelFactory.create().apply {
@@ -190,7 +219,7 @@ class HabitCardView(
             elevation = dp(1f)
 
             addView(scoreRing)
-            addView(label)
+            addView(labelColumn)
             addView(checkmarkPanel)
             addView(numberPanel)
 
@@ -200,11 +229,18 @@ class HabitCardView(
             }
         }
 
+        verticalFrame = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
+            addView(sectionHeader, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(innerFrame, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        }
+
         clipToPadding = false
         layoutParams = LayoutParams(MATCH_PARENT, WRAP_CONTENT)
         val margin = dp(3f).toInt()
         setPadding(margin, 0, margin, margin)
-        addView(innerFrame)
+        addView(verticalFrame)
     }
 
     override fun onModelChange() {
@@ -276,6 +312,13 @@ class HabitCardView(
             text = h.name
             setTextColor(c)
         }
+
+        metaLabel.apply {
+            text = planningMeta
+            setTextColor(sres.getColor(R.attr.contrast60))
+            visibility = if (planningMeta.isBlank()) GONE else VISIBLE
+        }
+
         scoreRing.apply {
             setColor(c)
         }

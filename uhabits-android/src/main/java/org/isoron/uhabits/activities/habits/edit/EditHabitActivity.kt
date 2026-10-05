@@ -41,6 +41,10 @@ import org.isoron.uhabits.activities.AndroidThemeSwitcher
 import org.isoron.uhabits.activities.common.dialogs.ColorPickerDialogFactory
 import org.isoron.uhabits.activities.common.dialogs.FrequencyPickerDialog
 import org.isoron.uhabits.activities.common.dialogs.WeekdayPickerDialog
+import org.isoron.uhabits.bridge.BridgeLifeRepository
+import org.isoron.uhabits.bridge.BridgePersonalSeeder
+import org.isoron.uhabits.bridge.BridgeSnapshotFactory
+import org.isoron.uhabits.bridge.BridgeSnapshotStore
 import org.isoron.uhabits.core.commands.CommandRunner
 import org.isoron.uhabits.core.commands.CreateHabitCommand
 import org.isoron.uhabits.core.commands.EditHabitCommand
@@ -74,6 +78,7 @@ class EditHabitActivity : AppCompatActivity() {
     private lateinit var themeSwitcher: AndroidThemeSwitcher
     private lateinit var binding: ActivityEditHabitBinding
     private lateinit var commandRunner: CommandRunner
+    private lateinit var lifeEditor: HabitLifeEditor
 
     var habitId = -1L
     lateinit var habitType: HabitType
@@ -133,6 +138,26 @@ class EditHabitActivity : AppCompatActivity() {
             reminderMin = state.getInt("reminderMin")
             reminderDays = WeekdayList(state.getInt("reminderDays"))
         }
+
+        val lifeRepository = BridgeLifeRepository(this)
+        BridgePersonalSeeder.seedIfEmpty(
+            context = this,
+            habitList = component.habitList,
+            repository = lifeRepository
+        )
+
+        val currentHabitUuid =
+            if (habitId >= 0) {
+                component.habitList.getById(habitId)?.uuid
+            } else {
+                null
+            }
+
+        lifeEditor = HabitLifeEditor(
+            activity = this,
+            repository = lifeRepository
+        )
+        lifeEditor.attach(binding.root, currentHabitUuid)
 
         updateColors()
 
@@ -301,7 +326,20 @@ class EditHabitActivity : AppCompatActivity() {
                 habit
             )
         }
+
         component.commandRunner.run(command)
+
+        habit.uuid?.let { habitUuid ->
+            lifeEditor.save(habitUuid)
+        }
+
+        BridgeSnapshotStore.save(
+            this,
+            BridgeSnapshotFactory.create(
+                component.habitList
+            )
+        )
+
         finish()
     }
 

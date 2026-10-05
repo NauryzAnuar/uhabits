@@ -77,6 +77,7 @@ class ListHabitsRootView(
     val progressBar = TaskProgressBar(context, runner)
     val hintView: HintView
     val header = HeaderView(context, preferences, midnightTimer)
+    val lifeDashboard = LifeDashboardView(context)
 
     init {
         val hints = resources.getStringArray(R.array.hints)
@@ -88,13 +89,15 @@ class ListHabitsRootView(
             addAtTop(konfettiView)
             addAtTop(tbar)
             addBelow(header, tbar)
-            addBelow(listView, header, height = MATCH_PARENT)
-            addBelow(llEmpty, header, height = MATCH_PARENT)
-            addBelow(progressBar, header) {
+            addBelow(lifeDashboard, header)
+            addBelow(listView, lifeDashboard, height = MATCH_PARENT)
+            addBelow(llEmpty, lifeDashboard, height = MATCH_PARENT)
+            addBelow(progressBar, lifeDashboard) {
                 it.topMargin = dp(-6.0f).toInt()
             }
             addAtBottom(hintView)
         }
+
         rootView.setupToolbar(
             toolbar = tbar,
             title = resources.getString(R.string.main_activity_title),
@@ -102,12 +105,14 @@ class ListHabitsRootView(
             displayHomeAsUpEnabled = false,
             theme = currentTheme()
         )
+
         addView(rootView, MATCH_PARENT, MATCH_PARENT)
         listAdapter.setListView(listView)
     }
 
     override fun onModelChange() {
         updateEmptyView()
+        lifeDashboard.refresh()
     }
 
     private fun setupControllers() {
@@ -123,6 +128,7 @@ class ListHabitsRootView(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         setupControllers()
+        lifeDashboard.refresh()
         listAdapter.observable.addListener(this)
     }
 
