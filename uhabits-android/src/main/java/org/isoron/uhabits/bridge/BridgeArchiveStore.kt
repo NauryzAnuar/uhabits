@@ -364,6 +364,9 @@ object BridgeArchiveStore {
                     "Archive delta appended"
                 )
             } catch (e: Exception) {
+                // Keep a recovery sync pending if the provider was offline or rejected the write.
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .edit().putBoolean(KEY_REPAIRED_ARCHIVE_SYNC, false).apply()
                 Log.e(
                     "LoopBridge",
                     "Archive delta failed",
