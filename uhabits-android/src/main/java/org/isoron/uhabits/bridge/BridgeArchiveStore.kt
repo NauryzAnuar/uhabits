@@ -34,6 +34,8 @@ object BridgeArchiveStore {
     private const val KEY_DRIVE_SCHEMA_VERSION =
         "drive_schema_version"
 
+    private const val KEY_REPAIRED_ARCHIVE_SYNC = "archive_full_sync_fix_v1"
+
     private const val FILE_NAME =
         "bridge_archive.jsonl"
 
@@ -87,6 +89,7 @@ object BridgeArchiveStore {
                 KEY_DRIVE_SCHEMA_VERSION,
                 0
             )
+            .putBoolean(KEY_REPAIRED_ARCHIVE_SYNC, false)
             .apply()
     }
 
@@ -252,7 +255,8 @@ object BridgeArchiveStore {
             prefs.getInt(
                 KEY_DRIVE_SCHEMA_VERSION,
                 0
-            ) < CURRENT_SCHEMA_VERSION
+            ) < CURRENT_SCHEMA_VERSION ||
+            (hasExportTarget(context) && !prefs.getBoolean(KEY_REPAIRED_ARCHIVE_SYNC, false))
         ) {
             executor.execute {
                 try {
@@ -265,6 +269,7 @@ object BridgeArchiveStore {
                             KEY_DRIVE_SCHEMA_VERSION,
                             CURRENT_SCHEMA_VERSION
                         )
+                        .putBoolean(KEY_REPAIRED_ARCHIVE_SYNC, hasExportTarget(context))
                         .apply()
 
                     Log.i(
@@ -350,10 +355,9 @@ object BridgeArchiveStore {
                     }
                 }
 
-                appendToDrive(
-                    context,
-                    lines
-                )
+                // Drive's document provider can silently ignore append ("wa").
+                // Upload the entire local journal without dropping past events.
+                syncWholeFileToDrive(context)
 
                 Log.i(
                     "LoopBridge",
@@ -680,56 +684,6 @@ object BridgeArchiveStore {
         writer.newLine()
     }
 
-    private fun appendToDrive(
-        context: Context,
-        lines: List<String>
-    ) {
-        val uriString =
-            context
-                .getSharedPreferences(
-                    PREFS,
-                    Context.MODE_PRIVATE
-                )
-                .getString(
-                    KEY_EXPORT_URI,
-                    null
-                )
-                ?: return
-
-        try {
-            context.contentResolver
-                .openOutputStream(
-                    Uri.parse(uriString),
-                    "wa"
-                )
-                ?.use { output ->
-
-                    BufferedWriter(
-                        OutputStreamWriter(
-                            output,
-                            Charsets.UTF_8
-                        )
-                    ).use { writer ->
-
-                        lines.forEach { line ->
-                            writer.write(line)
-                            writer.newLine()
-                        }
-                    }
-                }
-        } catch (e: Exception) {
-            Log.w(
-                "LoopBridge",
-                "Drive append unsupported, full sync used",
-                e
-            )
-
-            syncWholeFileToDrive(
-                context
-            )
-        }
-    }
-
     private fun syncWholeFileToDrive(
         context: Context
     ) {
@@ -750,6 +704,10 @@ object BridgeArchiveStore {
                 FILE_NAME
             )
 
+        check(file.exists() && file.length() > 0L) {
+            "Local Loop archive is missing; refusing to truncate remote history"
+        }
+
         context.contentResolver
             .openOutputStream(
                 Uri.parse(uriString),
@@ -762,5 +720,6 @@ object BridgeArchiveStore {
                         input.copyTo(output)
                     }
             }
+            ?: error("Drive did not open the archive for writing")
     }
 }
